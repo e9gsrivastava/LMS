@@ -124,9 +124,9 @@ class Program(QuxModel):
 
     def students(self):
         """
-        Returns an empty queryset of students.
+        Returns students.
         """
-        return Student.objects.none()
+        return self.student_set.all()
 
     @classmethod
     def create_random_program(cls):
