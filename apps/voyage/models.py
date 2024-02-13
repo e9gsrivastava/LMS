@@ -1,44 +1,75 @@
+"""
+database tables  for voyage app
+"""
+import random
+from datetime import datetime, timedelta
 from django.contrib.auth import get_user_model
 from django.db import models
 from qux.models import QuxModel
-import random
-from datetime import datetime, timedelta
+
 
 class Faculty(QuxModel):
+    """
+    Represents a faculty member.
+    """
+
     user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE)
     github = models.CharField(max_length=39, unique=True)
     is_active = models.BooleanField(default=True)
 
     @classmethod
     def create_random_faculty(cls):
-        for i in range(1,6):
-            user = get_user_model().objects.create_user(username=f"faculty_{i}",email=f"e9{i}@gmail.com", password="password{i}")
-            faculty = cls(user=user, github=f"github_{random.randint(1000, 9999)}", is_active=random.choice([True, False]))
+        """
+        Creates and saves random faculty members.
+        """
+        for i in range(1, 6):
+            user = get_user_model().objects.create_user(
+                username=f"faculty_{i}",
+                email=f"e9{i}@gmail.com",
+                password="password{i}",
+            )
+            faculty = cls(
+                user=user,
+                github=f"github_{random.randint(1000, 9999)}",
+                is_active=random.choice([True, False]),
+            )
             faculty.save()
 
         return faculty
 
     def programs(self):
+        """
+        Returns a list of programs associated with the faculty.
+        """
+
         student_assignments = self.studentassignment_set.all()
-        prog = set()  
+        prog = set()
 
         for assignment in student_assignments:
             prog.add(assignment.student.program)
 
         return list(prog)
-    
+
     def courses(self):
-        contents=self.content_set.all()
-        con=set()
+        """
+        Returns a list of courses associated with the faculty.
+        """
+
+        contents = self.content_set.all()
+        con = set()
         for content in contents:
-            assigments=content.assignment_set.all()
+            assigments = content.assignment_set.all()
             for assigment in assigments:
-                con.add(assigment.course)       
+                con.add(assigment.course)
 
         return list(con)
 
     def content(self, program=None, course=None):
-        content_list=self.content_set.all()
+        """
+        Returns content based on the provided program and/or course.
+        """
+
+        content_list = self.content_set.all()
         if program and course:
             for i in content_list:
                 return i.assignment_set.filter(program=program, course=course)
@@ -53,24 +84,37 @@ class Faculty(QuxModel):
                 return i.assignment_set.all()
 
     def assignments_graded(self, assignment=None):
+        """
+        Returns a list of graded assignments associated with the faculty.
+        """
         graded_assignments = set()
 
         if assignment:
-            graded_assignments = self.studentassignment_set.filter(assignment=assignment, grade__isnull=False)
+            graded_assignments = self.studentassignment_set.filter(
+                assignment=assignment, grade__isnull=False
+            )
         else:
             graded_assignments = self.studentassignment_set.filter(grade__isnull=False)
 
         return list(graded_assignments)
 
-    
     def num_assignments(self):
-        a=[]
-        assignmnets=self.studentassignment_set.all()
+        """
+        Returns a list of all assignments associated with the faculty.
+        """
+
+        a = []
+        assignmnets = self.studentassignment_set.all()
         for assignment in assignmnets:
             a.append(assignment)
         return a
 
+
 class Program(QuxModel):
+    """
+    Represents an educational program.
+    """
+
     name = models.CharField(max_length=128)
     start = models.DateTimeField()
     end = models.DateTimeField()
@@ -79,64 +123,82 @@ class Program(QuxModel):
         return self.name
 
     def students(self):
+        """
+        Returns an empty queryset of students.
+        """
         return Student.objects.none()
 
     @classmethod
     def create_random_program(cls):
-        for i in range(1,4):
-            program = cls(name=f"Program_{i}",
-                        start=datetime.now() - timedelta(days=random.randint(30, 365)),
-                        end=datetime.now() + timedelta(days=random.randint(30, 365)))
+        """
+        Creates and saves random programs.
+        """
+        for i in range(1, 4):
+            program = cls(
+                name=f"Program_{i}",
+                start=datetime.now() - timedelta(days=random.randint(30, 365)),
+                end=datetime.now() + timedelta(days=random.randint(30, 365)),
+            )
             program.save()
 
         return program
 
 
 class Course(QuxModel):
+    """
+    Represents a course.
+    """
+
     name = models.CharField(max_length=128, unique=True)
 
     def __str__(self):
         return self.name
 
-
     def programs(self):
-        return {
-            assignment.program
-            for assignment in self.assignment_set.all()
-        }
-        
+        """
+        Returns a set of programs associated with the course.
+        """
+        return {assignment.program for assignment in self.assignment_set.all()}
 
     def students(self):
-        stu=set()
+        """
+        Returns a set of students associated with the course.
+        """
+        stu = set()
         for assignment in self.assignment_set.all():
             for s in assignment.studentassignment_set.all():
                 stu.add(s.student)
         return stu
 
-
     def content(self):
-        return {
-            assignment.content
-            for assignment in self.assignment_set.all()
-        }
-        
+        """
+        Returns a set of content associated with the course.
+        """
+        return {assignment.content for assignment in self.assignment_set.all()}
+
     def assignments(self):
-        return {
-            assignment
-            for assignment in self.assignment_set.all()
-        }
-        
+        """
+        Returns a set of assignments associated with the course.
+        """
+        return set(self.assignment_set.all())
 
     @classmethod
     def create_random_course(cls):
+        """
+        Creates and saves random courses.
+        """
         for i in range(1, 4):
             course = cls(name=f"Course_{i}")
             course.save()
- 
+
         return course
 
 
 class Content(QuxModel):
+    """
+    Represents educational content.
+    """
+
     name = models.CharField(max_length=128)
     faculty = models.ForeignKey(Faculty, on_delete=models.DO_NOTHING)
     repo = models.URLField(max_length=240, unique=True)
@@ -147,59 +209,98 @@ class Content(QuxModel):
 
     @classmethod
     def create_random_content(cls):
+        """
+        created random data for Content model
+        """
         faculties = Faculty.objects.all()
         for i in range(1, 29):
-            faculty=random.choice(faculties)
-    
-            content = cls(name=f"Content_{i}", faculty=faculty, repo=f"https://github.com/{faculty.github}/repo_{i}")
+            faculty = random.choice(faculties)
+
+            content = cls(
+                name=f"Content_{i}",
+                faculty=faculty,
+                repo=f"https://github.com/{faculty.github}/repo_{i}",
+            )
             content.save()
 
         return content
 
 
-
 class Student(QuxModel):
+    """
+    Represents a student enrolled in a specific program.
+    """
+
     user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE)
     github = models.CharField(max_length=39, unique=True)
     is_active = models.BooleanField(default=True)
     program = models.ForeignKey(Program, on_delete=models.DO_NOTHING)
 
     def courses(self):
-        c=set()
+        """
+        Returns a set of courses associated with the student's program.
+        """
+
+        c = set()
 
         for a in self.program.assignment_set.all():
             c.add(a.course)
         return c
 
     def assignments(self):
+        """
+        Returns all assignments associated with the student's program.
+        """
         return self.program.assignment_set.all()
-        
 
     def assignments_submitted(self, assignment=None):
-        return {
-            assignment.submitted
-            for assignment in self.studentassignment_set.all()
-        }
+        """
+        Returns a set of submitted assignments, optionally filtered by assignment.
+        """
 
+        return {assignment.submitted for assignment in self.studentassignment_set.all()}
 
     def assignments_not_submitted(self, assignment=None):
+        """
+        Returns assignments that have not been submitted, optionally filtered by assignment.
+        """
         return self.studentassignment_set.filter(submitted__isnull=True)
 
     def assignments_graded(self, assignment=None):
+        """
+        Returns graded assignments, optionally filtered by assignment.
+        """
         return self.studentassignment_set.filter(grade__isnull=False)
 
     @classmethod
     def create_random_student(cls):
+        """
+        Creates and saves random students with associated programs.
+        """
+
         programs = Program.objects.all()
-        for i in range(1,11):
-            user = get_user_model().objects.create_user(username=f"student_{random.randint(1000, 9999)}",email=f"e9student{i}@gmail.com", password="password{i}")
-            program=random.choice(programs)
-            student = cls(user=user, github=f"github_{random.randint(1000, 9999)}", is_active=random.choice([True, False]), program=program)
+        for i in range(1, 11):
+            user = get_user_model().objects.create_user(
+                username=f"student_{random.randint(1000, 9999)}",
+                email=f"e9student{i}@gmail.com",
+                password="password{i}",
+            )
+            program = random.choice(programs)
+            student = cls(
+                user=user,
+                github=f"github_{random.randint(1000, 9999)}",
+                is_active=random.choice([True, False]),
+                program=program,
+            )
             student.save()
         return student
 
 
 class Assignment(QuxModel):
+    """
+    Represents an assignment given to students in a specific program and course.
+    """
+
     program = models.ForeignKey(Program, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     content = models.ForeignKey(Content, on_delete=models.CASCADE)
@@ -211,9 +312,16 @@ class Assignment(QuxModel):
         unique_together = ["program", "course", "content"]
 
     def __str__(self):
+        """
+        Returns a string representation of the assignment.
+        """
         return self.content.name
 
     def students(self):
+        """
+        Returns a set of students who have been assigned this assignment.
+        """
+
         students_set = set()
 
         student_assignments = self.studentassignment_set.all()
@@ -225,7 +333,6 @@ class Assignment(QuxModel):
                 students_set.add(student)
         return students_set
 
-        
     def submissions(self, graded=None):
         """
         Return a queryset of submissions that are either all, graded, or not graded.
@@ -240,28 +347,40 @@ class Assignment(QuxModel):
 
         return submissions_query
 
-
-
     @classmethod
     def create_random_assignment(cls):
+        """
+        Creates and saves random assignments with associated programs, courses, and content.
+        """
+
         programs = Program.objects.all()
         courses = Course.objects.all()
         contents = Content.objects.all()
 
-        for i in range(1,6):
+        for _ in range(1, 6):
             program = random.choice(programs)
             course = random.choice(courses)
             content = random.choice(contents)
             due_date = datetime.now() + timedelta(days=random.randint(7, 30))
 
-            assignment = cls(program=program, course=course, content=content, due=due_date,
-                            instructions=f"Instructions for Assignment_{random.randint(100, 999)}",
-                            rubric=f"Rubric for Assignment_{random.randint(100, 999)}")
+            assignment = cls(
+                program=program,
+                course=course,
+                content=content,
+                due=due_date,
+                instructions=f"Instructions for Assignment_{random.randint(100, 999)}",
+                rubric=f"Rubric for Assignment_{random.randint(100, 999)}",
+            )
             assignment.save()
 
         return assignment
 
+
 class StudentAssignment(QuxModel):
+    """
+    Represents an assignment submitted by a student, along with grading details.
+    """
+
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
     grade = models.DecimalField(
@@ -280,10 +399,15 @@ class StudentAssignment(QuxModel):
 
     @classmethod
     def create_random_student_assignment(cls):
+        """
+        Creates and saves random student assignments with
+        associated students, assignments, and faculties.
+        """
+
         students = Student.objects.all()
         assignments = Assignment.objects.all()
         faculties = Faculty.objects.all()
-        for i in range(1,11):
+        for _ in range(1, 11):
             student = random.choice(students)
             assignment = random.choice(assignments)
             faculty = random.choice(faculties)
@@ -291,9 +415,15 @@ class StudentAssignment(QuxModel):
             submitted_date = datetime.now() - timedelta(days=random.randint(0, 7))
             reviewed_date = submitted_date + timedelta(days=random.randint(0, 7))
 
-            student_assignment = cls(student=student, assignment=assignment, grade=random.choice([None, random.uniform(60, 100)]),
-                                    submitted=submitted_date, reviewed=reviewed_date, reviewer=faculty,
-                                    feedback=f"Feedback for Assignment_{assignment.id}")
+            student_assignment = cls(
+                student=student,
+                assignment=assignment,
+                grade=random.choice([None, random.uniform(60, 100)]),
+                submitted=submitted_date,
+                reviewed=reviewed_date,
+                reviewer=faculty,
+                feedback=f"Feedback for Assignment_{assignment.id}",
+            )
             student_assignment.save()
 
         return student_assignment
