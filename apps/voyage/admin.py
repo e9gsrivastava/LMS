@@ -161,7 +161,8 @@ class CourseAdmin(admin.ModelAdmin):
         assignments = obj.assignment_set.all()
         c = 0
         for assignment in assignments:
-            c += assignment.studentassignment_set.filter(grade=100.0).count()
+            # c += len(assignment.studentassignment_set.filter(grade=100.0))  
+            c += len(assignment.studentassignment_set.filter(grade__gte=40))
         return c
 
 
@@ -171,7 +172,7 @@ class AssignmentAdmin(admin.ModelAdmin):
     Custom admin interface for Assignment model.
     """
 
-    list_display = ("__str__", "average_grade")
+    list_display = ("__str__", "average_grade","due")
 
     def average_grade(self, obj):
         """
@@ -186,3 +187,7 @@ class StudentAssignmentAdmin(admin.ModelAdmin):
     """
     Default admin interface for StudentAssignment model.
     """
+    list_display = ('student_name', 'assignment', 'grade', 'submitted', 'reviewed', 'reviewer', 'feedback')
+
+    def student_name(self,obj):
+        return obj.student.user
