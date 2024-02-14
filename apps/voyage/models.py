@@ -1,6 +1,7 @@
 """
 database tables  for voyage app
 """
+
 import random
 from datetime import datetime, timedelta
 from django.contrib.auth import get_user_model
@@ -258,19 +259,35 @@ class Student(QuxModel):
         Returns a set of submitted assignments, optionally filtered by assignment.
         """
 
-        return {assignment.submitted for assignment in self.studentassignment_set.all()}
+        if assignment:
+            return self.studentassignment_set.filter(
+                assignment=assignment, submitted__isnull=False
+            )
+        return self.studentassignment_set.filter(submitted__isnull=False)
 
-    def assignments_not_submitted(self, assignment=None):
+    def assignments_not_submited(self, assignment=None):
         """
         Returns assignments that have not been submitted, optionally filtered by assignment.
         """
+
+        if assignment:
+            return self.studentassignment_set.filter(
+                assignment=assignment, submitted__isnull=True
+            )
         return self.studentassignment_set.filter(submitted__isnull=True)
 
     def assignments_graded(self, assignment=None):
         """
         Returns graded assignments, optionally filtered by assignment.
         """
-        return self.studentassignment_set.filter(grade__isnull=False)
+
+        if assignment:
+            return self.studentassignment_set.filter(
+                assignment=assignment, submitted__isnull=False, grade__isnull=False
+            )
+        return self.studentassignment_set.filter(
+            submitted__isnull=False, grade__isnull=False
+        )
 
     @classmethod
     def create_random_student(cls):

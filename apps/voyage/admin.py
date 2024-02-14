@@ -71,13 +71,12 @@ class StudentAdmin(admin.ModelAdmin):
         Returns the number of courses enrolled by the student.
         """
         return len(obj.courses())
-    
+
     def num_assignments(self, obj):
         """
         num of assignments
         """
         return obj.assignments().count()
-
 
     def average_grade(self, obj):
         """
@@ -85,7 +84,8 @@ class StudentAdmin(admin.ModelAdmin):
         """
         submitted_assignments = obj.studentassignment_set.filter(grade__isnull=False)
         if submitted_assignments.exists():
-            return submitted_assignments.aggregate(Avg("grade"))["grade__avg"]
+            average = submitted_assignments.aggregate(Avg("grade"))["grade__avg"]
+            return round(average, 2)
         return None
 
 
@@ -101,17 +101,18 @@ class ContentAdmin(admin.ModelAdmin):
         """
         Returns the number of courses associated with the content.
         """
-        return (
-            obj.assignment_set.values("course")
-            .annotate(course_count=Count("course"))
-            .count()
-        )
+
+        assignments = obj.assignment_set.all()
+        courses = set()
+        for assignment in assignments:
+            courses.add(assignment.course)
+        return len(courses)
 
     def num_assignments(self, obj):
         """
         Returns the number of assignments associated with the content.
         """
-        return obj.assignment_set.count()
+        return obj.assignment_set.all().count()
 
 
 @admin.register(Program)
@@ -157,7 +158,11 @@ class CourseAdmin(admin.ModelAdmin):
         """
         Returns the number of completed assignments (graded 100%) associated with the course.
         """
-        return obj.assignment_set.filter(studentassignment__grade=100).count()
+        assignments = obj.assignment_set.all()
+        c = 0
+        for assignment in assignments:
+            c += assignment.studentassignment_set.filter(grade=100.0).count()
+        return c
 
 
 @admin.register(Assignment)
@@ -172,7 +177,8 @@ class AssignmentAdmin(admin.ModelAdmin):
         """
         Returns the average grade of assignments associated with this assignment.
         """
-        return obj.studentassignment_set.aggregate(Avg("grade"))["grade__avg"]
+        result = obj.studentassignment_set.aggregate(Avg("grade"))["grade__avg"]
+        return round(result, 2)
 
 
 @admin.register(StudentAssignment)
